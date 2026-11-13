@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Drone logboek">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0C120F">
+<meta name="color-scheme" content="light dark">
+<title>Drone Logboek</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one-column field app, big takeoff/landing button on top, three tabs (Vlucht, Logboek, Instellingen) on a bottom bar */
+:root {
+  --bg: #EDF0EE;
+  --surface: #FFFFFF;
+  --surface-2: #E3E8E5;
+  --ink: #101A16;
+  --muted: #55645D;
+  --line: #CBD3CE;
+  --accent: #1F4FD8;
+  --accent-ink: #FFFFFF;
+  --go: #177A38;
+  --go-ink: #FFFFFF;
+  --stop: #C0272D;
+  --stop-ink: #FFFFFF;
+  --warn-bg: #FFF1D6;
+  --warn-ink: #6B4300;
+  --c1: #1F4FD8; --c1-bg: #E3EBFD;
+  --c2: #0F6B5C; --c2-bg: #DAF0EB;
+  --c3: #B4400A; --c3-bg: #FDE6D8;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "Barlow", -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C120F; --surface: #151D19; --surface-2: #1E2924; --ink: #E8EFEB; --muted: #93A39B; --line: #2B3832;
+    --accent: #86A8FF; --accent-ink: #0A1230; --go: #41BF6B; --go-ink: #03140A; --stop: #F26B66; --stop-ink: #2A0504;
+    --warn-bg: #3A2D10; --warn-ink: #F3D58E;
+    --c1: #8FB0FF; --c1-bg: #1C2A52; --c2: #6FD3C0; --c2-bg: #113A33; --c3: #FFA877; --c3-bg: #4A2410;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C120F; --surface: #151D19; --surface-2: #1E2924; --ink: #E8EFEB; --muted: #93A39B; --line: #2B3832;
+  --accent: #86A8FF; --accent-ink: #0A1230; --go: #41BF6B; --go-ink: #03140A; --stop: #F26B66; --stop-ink: #2A0504;
+  --warn-bg: #3A2D10; --warn-ink: #F3D58E;
+  --c1: #8FB0FF; --c1-bg: #1C2A52; --c2: #6FD3C0; --c2-bg: #113A33; --c3: #FFA877; --c3-bg: #4A2410;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.4;
+  padding-block: 12px calc(92px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.top h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 30px; letter-spacing: 0.01em; text-transform: uppercase; line-height: 1; }
+.pilot { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.pilot button { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.pill.air { background: var(--go); color: var(--go-ink); }
+.pill.air i { background: var(--go-ink); animation: blink 1.4s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .pill.air i { animation: none; } }
+
+/* timer */
+.timer-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 16px 14px; text-align: center; }
+.lbl { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.timer { font-family: var(--font-display); font-weight: 600; font-size: clamp(64px, 22vw, 92px); line-height: 1; font-variant-numeric: tabular-nums; margin: 4px 0 2px; color: var(--muted); }
+.timer.run { color: var(--ink); }
+.sub { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.mainbtn { width: 100%; min-height: 88px; border: 0; border-radius: 14px; font-family: var(--font-display); font-weight: 700; font-size: 34px; letter-spacing: 0.06em; text-transform: uppercase; }
+.mainbtn.go { background: var(--go); color: var(--go-ink); }
+.mainbtn.stop { background: var(--stop); color: var(--stop-ink); }
+.mainbtn:active { transform: scale(0.99); }
+
+/* cards and fields */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.card h2 { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > span, legend { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0; }
+input[type="text"], select {
+  width: 100%; min-height: 48px; padding: 10px 12px; font-size: 16px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+}
+select { appearance: none; -webkit-appearance: none; padding-right: 36px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.seg span { display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 6px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-weight: 600; font-size: 15px; }
+.seg input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+.status { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 18px; }
+.hint { margin: 0; font-size: 14px; color: var(--muted); }
+.notice { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.notice button { margin-top: 8px; }
+
+.btn { min-height: 48px; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--stop); border-color: var(--stop); background: transparent; }
+.btn.danger.armed { background: var(--stop); color: var(--stop-ink); }
+.btn.small { min-height: 40px; padding: 6px 12px; font-size: 14px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1 1 0; min-width: 120px; }
+
+/* log */
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.stat b { display: block; font-family: var(--font-display); font-weight: 600; font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.entry { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.e-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.e-date { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.e-dur { font-family: var(--font-display); font-weight: 600; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.e-line { font-size: 14px; overflow-wrap: anywhere; }
+.e-line.m { color: var(--muted); }
+.chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.chip.oefening { color: var(--c1); background: var(--c1-bg); }
+.chip.prive { color: var(--c2); background: var(--c2-bg); }
+.chip.interventie { color: var(--c3); background: var(--c3-bg); }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 22px 16px; text-align: center; color: var(--muted); }
+.empty b { display: block; color: var(--ink); font-size: 17px; margin-bottom: 4px; }
+
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.list li:last-child { border-bottom: 0; }
+.list li span { overflow-wrap: anywhere; min-width: 0; }
+.add { display: flex; gap: 8px; }
+.add input { flex: 1 1 auto; min-width: 0; }
+
+/* bottom tabs */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line);
+  padding: 6px max(10px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)); }
+.tabs div { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tabs button { min-height: 52px; border: 0; border-radius: 10px; background: transparent; font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.tabs button[aria-current="true"] { background: var(--surface-2); color: var(--ink); }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 30; max-width: calc(100% - 32px);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 15px; font-weight: 500; text-align: center; }
+</style><script>
+(function(){try{var c=document.createElement("canvas");c.width=c.height=180;var x=c.getContext("2d");x.fillStyle="#0C120F";x.fillRect(0,0,180,180);
+x.strokeStyle="#41BF6B";x.fillStyle="#41BF6B";x.lineWidth=10;x.lineCap="round";x.beginPath();x.moveTo(52,52);x.lineTo(128,128);x.moveTo(128,52);x.lineTo(52,128);x.stroke();
+[[44,44],[136,44],[44,136],[136,136]].forEach(function(p){x.beginPath();x.arc(p[0],p[1],20,0,7);x.stroke()});x.beginPath();x.arc(90,90,14,0,7);x.fill();
+var l=document.createElement("link");l.rel="apple-touch-icon";l.href=c.toDataURL("image/png");document.head.appendChild(l)}catch(e){}})();
+</script>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <header class="top">
+    <div>
+      <h1>Drone logboek</h1>
+      <p class="pilot" id="pilotLine"></p>
+    </div>
+    <span class="pill" id="pill"><i></i><span id="pillText">Aan de grond</span></span>
+  </header>
+
+  <!-- VLUCHT -->
+  <section id="v-flight" class="view" aria-label="Vlucht" style="display:flex;flex-direction:column;gap:14px">
+    <div class="timer-card">
+      <div class="lbl">Vliegtijd</div>
+      <div class="timer" id="timer">00:00:00</div>
+      <div class="sub" id="takeoffAt">Nog niet opgestegen</div>
+    </div>
+
+    <button class="mainbtn go" id="mainBtn" type="button">Opstijgen</button>
+
+    <div class="card">
+      <fieldset>
+        <legend>Type vlucht</legend>
+        <div class="seg">
+          <label><input type="radio" name="vtype" value="oefening" id="t-oefening"><span>Oefening</span></label>
+          <label><input type="radio" name="vtype" value="prive" id="t-prive"><span>Privé</span></label>
+          <label><input type="radio" name="vtype" value="interventie" id="t-interventie"><span>Interventie</span></label>
+        </div>
+      </fieldset>
+      <label class="field"><span>Toestel</span><select id="droneSel"></select></label>
+      <div class="notice" id="noDrone" hidden>
+        Je hebt nog geen toestel ingesteld.
+        <div><button class="btn small" type="button" id="goDrones">Toestel toevoegen</button></div>
+      </div>
+      <label class="field"><span>Opmerking (optioneel)</span><input type="text" id="note" autocomplete="off" placeholder="Bijvoorbeeld: batterij 2, testvlucht"></label>
+    </div>
+
+    <div class="card">
+      <label class="field"><span>Locatie</span><input type="text" id="place" autocomplete="off" placeholder="Wordt bij het opstijgen opgehaald"><div class="status" id="locStatus"></div></label>
+      <label class="field"><span>Weer</span><input type="text" id="wxText" autocomplete="off" placeholder="Wordt bij het opstijgen opgehaald"><div class="status" id="wxStatus"></div></label>
+      <p class="hint">Je kan locatie en weer zelf aanpassen voor je landt.</p>
+    </div>
+  </section>
+
+  <!-- LOGBOEK -->
+  <section id="v-log" class="view" aria-label="Logboek" hidden style="flex-direction:column;gap:14px">
+    <div class="stats">
+      <div class="stat"><div class="lbl">Vluchten</div><b id="stCount">0</b></div>
+      <div class="stat"><div class="lbl">Totale vliegtijd</div><b id="stTime">0 min</b></div>
+    </div>
+    <div class="row">
+      <button class="btn primary" type="button" id="expXlsx">Excel bewaren</button>
+      <button class="btn primary" type="button" id="expPdf">PDF bewaren</button>
+    </div>
+    <div id="logList" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
+
+  <!-- INSTELLINGEN -->
+  <section id="v-settings" class="view" aria-label="Instellingen" hidden style="flex-direction:column;gap:14px">
+    <div class="card">
+      <h2>Piloot</h2>
+      <label class="field"><span>Naam</span><input type="text" id="pilotName" autocomplete="name" placeholder="Voor- en achternaam"></label>
+      <p class="hint">Je naam komt bij elke nieuwe vlucht en bovenaan in de PDF en Excel.</p>
+    </div>
+    <div class="card">
+      <h2>Toestellen</h2>
+      <form class="add" id="droneForm">
+        <input type="text" id="droneName" autocomplete="off" placeholder="Bijvoorbeeld: DJI Mavic 3T" aria-label="Naam van het toestel">
+        <button class="btn primary" type="submit">Toevoegen</button>
+      </form>
+      <ul class="list" id="droneList"></ul>
+    </div>
+    <div class="notice" id="storeWarn" hidden>Je gegevens worden in deze weergave niet bewaard. Bewaar het logboek na elke vlucht als Excel of PDF.</div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Navigatie"><div>
+  <button type="button" data-view="flight" aria-current="true">Vlucht</button>
+  <button type="button" data-view="log" aria-current="false">Logboek</button>
+  <button type="button" data-view="settings" aria-current="false">Instellingen</button>
+</div></nav>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var K = { logs: "dronelog.logs", drones: "dronelog.drones", active: "dronelog.active", prefs: "dronelog.prefs" };
+  var TYPES = { oefening: "Oefening", prive: "Privé", interventie: "Interventie" };
+  var storeOk = true;
+
+  function load(k, def) {
+    try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { storeOk = false; return def; }
+  }
+  function save(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { storeOk = false; }
+  }
+  try { localStorage.setItem("dronelog.test", "1"); localStorage.removeItem("dronelog.test"); } catch (e) { storeOk = false; }
+
+  var state = {
+    logs: load(K.logs, []),
+    drones: load(K.drones, []),
+    active: load(K.active, null),
+    prefs: load(K.prefs, { pilot: "", type: "oefening", droneId: "" })
+  };
+  if (!state.prefs.type) state.prefs.type = "oefening";
+
+  /* ---------- helpers ---------- */
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function clock(sec) { var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return pad(h) + ":" + pad(m) + ":" + pad(s); }
+  function dur(sec) {
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h > 0) return h + " u " + m + " min";
+    return m + " min " + s + " s";
+  }
+  function fDate(ms) { return pad(new Date(ms).getDate()) + "/" + pad(new Date(ms).getMonth() + 1) + "/" + new Date(ms).getFullYear(); }
+  function fTime(ms) { var d = new Date(ms); return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()); }
+  function stamp() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function totalSec() { return state.logs.reduce(function (a, e) { return a + e.dur; }, 0); }
+
+  var COMPASS = ["N", "NNO", "NO", "ONO", "O", "OZO", "ZO", "ZZO", "Z", "ZZW", "ZW", "WZW", "W", "WNW", "NW", "NNW"];
+  function compass(deg) { return COMPASS[Math.round(deg / 22.5) % 16]; }
+  function wxDesc(c) {
+    if (c === 0) return "Onbewolkt";
+    if (c === 1) return "Overwegend helder";
+    if (c === 2) return "Half bewolkt";
+    if (c === 3) return "Bewolkt";
+    if (c === 45 || c === 48) return "Mist";
+    if (c >= 51 && c <= 55) return "Motregen";
+    if (c === 56 || c === 57) return "Aanvriezende motregen";
+    if (c === 61) return "Lichte regen";
+    if (c === 63) return "Regen";
+    if (c === 65) return "Zware regen";
+    if (c === 66 || c === 67) return "Ijzel";
+    if (c === 71 || c === 73 || c === 75 || c === 77) return "Sneeuw";
+    if (c >= 80 && c <= 82) return "Regenbuien";
+    if (c === 85 || c === 86) return "Sneeuwbuien";
+    if (c === 95) return "Onweer";
+    if (c === 96 || c === 99) return "Onweer met hagel";
+    return "Onbekend";
+  }
+  function wxSummary(w) {
+    var parts = [wxDesc(w.code)];
+    if (w.temp != null) parts.push(Math.round(w.temp) + " °C");
+    if (w.wind != null) parts.push("wind " + Math.round(w.wind) + " km/h " + (w.dir != null ? compass(w.dir) : ""));
+    if (w.gust != null) parts.push("windstoten " + Math.round(w.gust) + " km/h");
+    return parts.join(", ").replace(/\s+,/g, ",").trim();
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3200);
+  }
+
+  /* ---------- navigation ---------- */
+  var view = "flight";
+  function go(v) {
+    view = v;
+    ["flight", "log", "settings"].forEach(function (n) { $("v-" + n).hidden = (n !== v); });
+    document.querySelectorAll(".tabs button").forEach(function (b) { b.setAttribute("aria-current", b.getAttribute("data-view") === v ? "true" : "false"); });
+    if (v === "log") renderLog();
+    if (v === "settings") renderSettings();
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll(".tabs button").forEach(function (b) { b.addEventListener("click", function () { go(b.getAttribute("data-view")); }); });
+  $("goDrones").addEventListener("click", function () { go("settings"); setTimeout(function () { $("droneName").focus(); }, 50); });
+  $("pilotLine").addEventListener("click", function (e) { if (e.target.tagName === "BUTTON") { go("settings"); setTimeout(function () { $("pilotName").focus(); }, 50); } });
+
+  /* ---------- header + flight view ---------- */
+  function renderHeader() {
+    var p = (state.prefs.pilot || "").trim();
+    $("pilotLine").innerHTML = p ? "Piloot: <b>" + esc(p) + "</b>" : '<button type="button">Naam piloot instellen</button>';
+    var air = !!state.active;
+    $("pill").className = "pill" + (air ? " air" : "");
+    $("pillText").textContent = air ? "In de lucht" : "Aan de grond";
+  }
+  function renderDrones() {
+    var sel = $("droneSel");
+    var cur = (state.active && state.active.droneId) || state.prefs.droneId || (state.drones[0] && state.drones[0].id) || "";
+    sel.innerHTML = state.drones.map(function (d) { return '<option value="' + esc(d.id) + '">' + esc(d.name) + "</option>"; }).join("");
+    if (!state.drones.length) sel.innerHTML = '<option value="">Geen toestel</option>';
+    if (state.drones.some(function (d) { return d.id === cur; })) sel.value = cur;
+    $("noDrone").hidden = state.drones.length > 0;
+    sel.hidden = state.drones.length === 0;
+    sel.parentNode.hidden = state.drones.length === 0;
+  }
+  function renderFlight() {
+    renderHeader();
+    renderDrones();
+    var a = state.active;
+    var type = (a && a.type) || state.prefs.type || "oefening";
+    $("t-" + type).checked = true;
+    $("mainBtn").className = "mainbtn " + (a ? "stop" : "go");
+    $("mainBtn").textContent = a ? "Geland" : "Opstijgen";
+    $("takeoffAt").textContent = a ? "Opgestegen om " + fTime(a.start) : "Nog niet opgestegen";
+    $("timer").className = "timer" + (a ? " run" : "");
+    if (a) {
+      $("note").value = a.note || "";
+      $("place").value = a.place || "";
+      $("wxText").value = a.wxText || "";
+      tick();
+    } else {
+      $("timer").textContent = "00:00:00";
+    }
+  }
+  function tick() {
+    var a = state.active; if (!a) return;
+    $("timer").textContent = clock(Math.max(0, Math.floor((Date.now() - a.start) / 1000)));
+  }
+  var tickTimer = null;
+  function startTick() { stopTick(); tickTimer = setInterval(tick, 1000); }
+  function stopTick() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
+
+  var wake = null;
+  function wakeOn() { try { if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function (w) { wake = w; }, function () {}); } catch (e) {} }
+  function wakeOff() { try { if (wake) { wake.release(); wake = null; } } catch (e) {} }
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && state.active) { wakeOn(); tick(); } });
+
+  /* keep the active flight in sync with the form */
+  function syncActive() {
+    if (!state.active) return;
+    var a = state.active;
+    a.type = (document.querySelector('input[name="vtype"]:checked') || {}).value || a.type;
+    a.droneId = $("droneSel").value;
+    a.note = $("note").value;
+    save(K.active, a);
+  }
+  document.querySelectorAll('input[name="vtype"]').forEach(function (r) {
+    r.addEventListener("change", function () { state.prefs.type = r.value; save(K.prefs, state.prefs); syncActive(); });
+  });
+  $("droneSel").addEventListener("change", function () { state.prefs.droneId = $("droneSel").value; save(K.prefs, state.prefs); syncActive(); });
+  $("note").addEventListener("input", syncActive);
+  $("place").addEventListener("input", function () { if (state.active) { state.active.place = $("place").value; state.active.pt = true; save(K.active, state.active); } });
+  $("wxText").addEventListener("input", function () { if (state.active) { state.active.wxText = $("wxText").value; state.active.wt = true; save(K.active, state.active); } });
+
+  /* ---------- takeoff: location + weather ---------- */
+  function stillActive(start) { return state.active && state.active.start === start; }
+
+  function fetchLocation(start) {
+    $("locStatus").textContent = "Locatie ophalen…";
+    function fail(msg) { if (stillActive(start)) $("locStatus").textContent = msg; }
+    if (!("geolocation" in navigator)) { fail("Locatie niet beschikbaar. Typ de plaats zelf in."); return; }
+    try {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        if (!stillActive(start)) return;
+        var a = state.active;
+        a.lat = pos.coords.latitude; a.lon = pos.coords.longitude; a.acc = pos.coords.accuracy;
+        save(K.active, a);
+        $("locStatus").textContent = a.lat.toFixed(5) + ", " + a.lon.toFixed(5) + " (±" + Math.round(a.acc) + " m)";
+        reverseGeocode(start, a.lat, a.lon);
+        fetchWeather(start, a.lat, a.lon);
+      }, function (err) {
+        var m = err && err.code === 1 ? "Geen toestemming voor locatie. Typ de plaats zelf in." : "Locatie niet gevonden. Typ de plaats zelf in.";
+        fail(m);
+        $("wxStatus").textContent = "Weer kan niet worden opgehaald zonder locatie. Typ het weer zelf in.";
+      }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+    } catch (e) {
+      fail("Locatie niet beschikbaar. Typ de plaats zelf in.");
+      $("wxStatus").textContent = "Typ het weer zelf in.";
+    }
+  }
+  function reverseGeocode(start, lat, lon) {
+    try {
+      fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&accept-language=nl&lat=" + lat + "&lon=" + lon)
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!stillActive(start)) return;
+          var ad = j.address || {};
+          var street = ad.road || ad.pedestrian || ad.path || "";
+          var town = ad.village || ad.town || ad.city || ad.municipality || ad.suburb || "";
+          var name = [street, town].filter(Boolean).join(", ");
+          if (name && !state.active.pt) {
+            state.active.place = name; save(K.active, state.active);
+            $("place").value = name;
+          }
+        })["catch"](function () {});
+    } catch (e) {}
+  }
+  function fetchWeather(start, lat, lon) {
+    $("wxStatus").textContent = "Weer ophalen…";
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+      "&current=temperature_2m,precipitation,weather_code,cloud_cover,visibility,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kmh&timezone=auto";
+    try {
+      fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+        if (!stillActive(start)) return;
+        var c = j.current; if (!c) throw new Error("no data");
+        var w = { temp: c.temperature_2m, wind: c.wind_speed_10m, dir: c.wind_direction_10m, gust: c.wind_gusts_10m, cloud: c.cloud_cover, precip: c.precipitation, vis: c.visibility != null ? Math.round(c.visibility / 100) / 10 : null, code: c.weather_code };
+        var a = state.active; a.wx = w;
+        if (!a.wt) { a.wxText = wxSummary(w); $("wxText").value = a.wxText; }
+        save(K.active, a);
+        $("wxStatus").textContent = "Opgehaald om " + fTime(Date.now()) + " (Open-Meteo)";
+      })["catch"](function () {
+        if (stillActive(start)) $("wxStatus").textContent = "Weer ophalen mislukt. Typ het weer zelf in.";
+      });
+    } catch (e) { $("wxStatus").textContent = "Weer ophalen mislukt. Typ het weer zelf in."; }
+  }
+
+  function takeoff() {
+    if (!state.drones.length || !$("droneSel").value) { toast("Voeg eerst een toestel toe."); go("settings"); return; }
+    var start = Date.now();
+    state.active = {
+      start: start,
+      type: (document.querySelector('input[name="vtype"]:checked') || {}).value || "oefening",
+      droneId: $("droneSel").value,
+      note: $("note").value,
+      place: $("place").value, pt: !!$("place").value.trim(),
+      wxText: $("wxText").value, wt: !!$("wxText").value.trim(),
+      lat: null, lon: null, acc: null, wx: null
+    };
+    save(K.active, state.active);
+    renderFlight(); startTick(); wakeOn();
+    $("wxStatus").textContent = "";
+    fetchLocation(start);
+  }
+
+  function land() {
+    var a = state.active; if (!a) return;
+    syncActive();
+    var end = Date.now();
+    var drone = state.drones.filter(function (d) { return d.id === a.droneId; })[0];
+    var place = $("place").value.trim();
+    if (!place && a.lat != null) place = a.lat.toFixed(5) + ", " + a.lon.toFixed(5);
+    var entry = {
+      id: uid(), start: a.start, end: end, dur: Math.max(1, Math.round((end - a.start) / 1000)),
+      type: a.type, droneId: a.droneId, drone: drone ? drone.name : "Onbekend toestel",
+      pilot: (state.prefs.pilot || "").trim(),
+      lat: a.lat, lon: a.lon, acc: a.acc, place: place,
+      wx: a.wx, wxText: $("wxText").value.trim(), note: $("note").value.trim()
+    };
+    state.logs.unshift(entry); save(K.logs, state.logs);
+    state.active = null; save(K.active, null);
+    stopTick(); wakeOff();
+    $("note").value = ""; $("place").value = ""; $("wxText").value = "";
+    $("locStatus").textContent = ""; $("wxStatus").textContent = "";
+    renderFlight();
+    toast("Vlucht opgeslagen: " + dur(entry.dur));
+  }
+  $("mainBtn").addEventListener("click", function () { if (state.active) land(); else takeoff(); });
+
+  /* ---------- logbook ---------- */
+  var armedDel = null, armedTimer = null;
+  function arm(btn, id, action) {
+    if (armedDel === id) { armedDel = null; clearTimeout(armedTimer); action(); return; }
+    armedDel = id; btn.classList.add("armed"); btn.textContent = "Zeker? Tik nogmaals";
+    clearTimeout(armedTimer);
+    armedTimer = setTimeout(function () { armedDel = null; if (view === "log") renderLog(); if (view === "settings") renderSettings(); }, 4000);
+  }
+  function renderLog() {
+    $("stCount").textContent = state.logs.length;
+    var t = totalSec(); $("stTime").textContent = t >= 3600 ? Math.floor(t / 3600) + " u " + Math.floor((t % 3600) / 60) + " min" : Math.floor(t / 60) + " min";
+    var list = $("logList");
+    if (!state.logs.length) {
+      list.innerHTML = '<div class="empty"><b>Nog geen vluchten</b>Na je eerste landing verschijnt de vlucht hier.</div>';
+      return;
+    }
+    list.innerHTML = state.logs.map(function (e) {
+      var loc = e.place ? '<div class="e-line">' + esc(e.place) + "</div>" : "";
+      var wx = e.wxText ? '<div class="e-line m">' + esc(e.wxText) + "</div>" : "";
+      var nt = e.note ? '<div class="e-line m">' + esc(e.note) + "</div>" : "";
+      return '<article class="entry"><div class="e-top"><div class="e-date">' + fDate(e.start) + " · " + fTime(e.start).slice(0, 5) + "–" + fTime(e.end).slice(0, 5) +
+        '</div><span class="chip ' + esc(e.type) + '">' + esc(TYPES[e.type] || e.type) + "</span></div>" +
+        '<div class="e-dur">' + dur(e.dur) + "</div>" +
+        '<div class="e-line">' + esc(e.drone) + (e.pilot ? " · " + esc(e.pilot) : "") + "</div>" + loc + wx + nt +
+        '<div><button class="btn danger small" type="button" data-del="' + esc(e.id) + '">Verwijderen</button></div></article>';
+    }).join("");
+  }
+  $("logList").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-del]"); if (!b) return;
+    var id = b.getAttribute("data-del");
+    arm(b, id, function () { state.logs = state.logs.filter(function (e) { return e.id !== id; }); save(K.logs, state.logs); renderLog(); toast("Vlucht verwijderd"); });
+  });
+
+  /* ---------- settings ---------- */
+  function renderSettings() {
+    $("pilotName").value = state.prefs.pilot || "";
+    $("storeWarn").hidden = storeOk;
+    var ul = $("droneList");
+    if (!state.drones.length) { ul.innerHTML = '<li><span class="hint">Nog geen toestellen. Voeg je eerste toe.</span></li>'; return; }
+    ul.innerHTML = state.drones.map(function (d) {
+      return '<li><span>' + esc(d.name) + '</span><button class="btn danger small" type="button" data-rm="' + esc(d.id) + '">Verwijderen</button></li>';
+    }).join("");
+  }
+  $("pilotName").addEventListener("input", function () { state.prefs.pilot = $("pilotName").value; save(K.prefs, state.prefs); renderHeader(); });
+  $("droneForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var n = $("droneName").value.trim(); if (!n) return;
+    var d = { id: uid(), name: n };
+    state.drones.push(d); save(K.drones, state.drones);
+    if (!state.prefs.droneId) { state.prefs.droneId = d.id; save(K.prefs, state.prefs); }
+    $("droneName").value = ""; renderSettings(); renderDrones();
+  });
+  $("droneList").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-rm]"); if (!b) return;
+    var id = b.getAttribute("data-rm");
+    arm(b, id, function () {
+      state.drones = state.drones.filter(function (d) { return d.id !== id; }); save(K.drones, state.drones);
+      if (state.prefs.droneId === id) { state.prefs.droneId = ""; save(K.prefs, state.prefs); }
+      renderSettings(); renderDrones();
+    });
+  });
+
+  /* ---------- export ---------- */
+  function sortedLogs() { return state.logs.slice().sort(function (a, b) { return a.start - b.start; }); }
+  function hms(sec) { return Math.floor(sec / 3600) + ":" + pad(Math.floor((sec % 3600) / 60)) + ":" + pad(sec % 60); }
+
+  async function deliver(blob, filename, mime) {
+    var dl = null;
+    try { if (window.claude && window.claude.use) dl = await window.claude.use("downloads"); } catch (e) { dl = null; }
+    if (dl) {
+      try { await dl.save({ filename: filename, data: blob }); toast("Bestand bewaard"); }
+      catch (e) { if (!e || e.code !== "declined") toast("Bewaren is niet gelukt"); }
+      return;
+    }
+    try {
+      var file = new File([blob], filename, { type: mime });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 5000);
+    toast("Bestand wordt gedownload");
+  }
+
+  function exportXlsx() {
+    if (!state.logs.length) { toast("Er zijn nog geen vluchten om te bewaren."); return; }
+    if (!window.XLSX) { toast("Excel-onderdeel kon niet laden. Controleer je verbinding."); return; }
+    var logs = sortedLogs();
+    var head = ["Datum", "Opstijgen", "Landing", "Duur (uu:mm:ss)", "Duur (min)", "Type vlucht", "Toestel", "Piloot", "Locatie", "Breedtegraad", "Lengtegraad", "Temperatuur (°C)", "Wind (km/h)", "Windrichting", "Windstoten (km/h)", "Bewolking (%)", "Neerslag (mm)", "Zicht (km)", "Weer", "Opmerking"];
+    var rows = logs.map(function (e) {
+      var w = e.wx || {};
+      return [fDate(e.start), fTime(e.start), fTime(e.end), hms(e.dur), Math.round(e.dur / 60 * 100) / 100, TYPES[e.type] || e.type, e.drone, e.pilot || "", e.place || "",
+        e.lat != null ? Math.round(e.lat * 1e5) / 1e5 : "", e.lon != null ? Math.round(e.lon * 1e5) / 1e5 : "",
+        w.temp != null ? w.temp : "", w.wind != null ? w.wind : "", w.dir != null ? compass(w.dir) : "", w.gust != null ? w.gust : "",
+        w.cloud != null ? w.cloud : "", w.precip != null ? w.precip : "", w.vis != null ? w.vis : "", e.wxText || "", e.note || ""];
+    });
+    var ws = XLSX.utils.aoa_to_sheet([head].concat(rows));
+    ws["!cols"] = [12, 11, 11, 15, 11, 13, 22, 20, 30, 12, 12, 15, 12, 12, 16, 13, 13, 11, 40, 30].map(function (w) { return { wch: w }; });
+    ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: head.length - 1 } }) };
+
+    var pilot = (state.prefs.pilot || "").trim();
+    var sum = [["Drone logboek"], ["Piloot", pilot], ["Aangemaakt op", fDate(Date.now())], ["Aantal vluchten", logs.length], ["Totale vliegtijd (uu:mm:ss)", hms(totalSec())], [], ["Per toestel", "Vluchten", "Vliegtijd (uu:mm:ss)"]];
+    var byDrone = {}, byType = {};
+    logs.forEach(function (e) {
+      (byDrone[e.drone] = byDrone[e.drone] || { n: 0, s: 0 }).n++; byDrone[e.drone].s += e.dur;
+      var tn = TYPES[e.type] || e.type; (byType[tn] = byType[tn] || { n: 0, s: 0 }).n++; byType[tn].s += e.dur;
+    });
+    Object.keys(byDrone).forEach(function (k) { sum.push([k, byDrone[k].n, hms(byDrone[k].s)]); });
+    sum.push([], ["Per type vlucht", "Vluchten", "Vliegtijd (uu:mm:ss)"]);
+    Object.keys(byType).forEach(function (k) { sum.push([k, byType[k].n, hms(byType[k].s)]); });
+    var ws2 = XLSX.utils.aoa_to_sheet(sum);
+    ws2["!cols"] = [{ wch: 30 }, { wch: 14 }, { wch: 22 }];
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Logboek");
+    XLSX.utils.book_append_sheet(wb, ws2, "Samenvatting");
+    var out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    deliver(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "drone-logboek-" + stamp() + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  }
+
+  function exportPdf() {
+    if (!state.logs.length) { toast("Er zijn nog geen vluchten om te bewaren."); return; }
+    if (!window.jspdf) { toast("PDF-onderdeel kon niet laden. Controleer je verbinding."); return; }
+    var logs = sortedLogs();
+    var doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    var pilot = (state.prefs.pilot || "").trim();
+    var multi = {}; logs.forEach(function (e) { multi[e.pilot || ""] = 1; });
+    var showPilot = Object.keys(multi).length > 1;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("Drone logboek", 14, 16);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.text("Piloot: " + (pilot || "-"), 14, 23);
+    doc.text("Aangemaakt op: " + fDate(Date.now()), 14, 28);
+    doc.text("Vluchten: " + logs.length + "   Totale vliegtijd: " + hms(totalSec()), 14, 33);
+    var head = ["Datum", "Opstijgen", "Landing", "Duur", "Type", "Toestel"].concat(showPilot ? ["Piloot"] : []).concat(["Locatie", "Weer", "Opmerking"]);
+    var body = logs.map(function (e) {
+      var loc = (e.place || "") + (e.lat != null && e.place && e.place.indexOf(e.lat.toFixed(5)) === -1 ? "\n" + e.lat.toFixed(5) + ", " + e.lon.toFixed(5) : "");
+      return [fDate(e.start), fTime(e.start), fTime(e.end), hms(e.dur), TYPES[e.type] || e.type, e.drone].concat(showPilot ? [e.pilot || ""] : []).concat([loc, e.wxText || "", e.note || ""]);
+    });
+    doc.autoTable({
+      startY: 38, head: [head], body: body,
+      styles: { fontSize: 8, cellPadding: 1.8, overflow: "linebreak", valign: "top" },
+      headStyles: { fillColor: [23, 60, 48], textColor: 255 },
+      alternateRowStyles: { fillColor: [244, 246, 245] },
+      margin: { left: 14, right: 14, bottom: 14 },
+      didDrawPage: function (d) {
+        doc.setFontSize(8); doc.setTextColor(120);
+        doc.text("Pagina " + doc.internal.getNumberOfPages(), doc.internal.pageSize.getWidth() - 14, doc.internal.pageSize.getHeight() - 7, { align: "right" });
+        doc.setTextColor(0);
+      }
+    });
+    deliver(doc.output("blob"), "drone-logboek-" + stamp() + ".pdf", "application/pdf");
+  }
+  $("expXlsx").addEventListener("click", exportXlsx);
+  $("expPdf").addEventListener("click", exportPdf);
+
+  /* ---------- start ---------- */
+  renderFlight();
+  if (state.active) { startTick(); wakeOn(); }
+  if (!storeOk) $("storeWarn").hidden = false;
+})();
+</script>
+</body></html>
